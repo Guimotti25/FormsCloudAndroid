@@ -90,7 +90,7 @@ class EntryListActivity : AppCompatActivity(), OnItemInteractionListener {
     }
 
     override fun onItemClick(submission: FormSubmission) {
-        val intent = Intent(this, SubmissionDetailActivity::class.java).apply {
+        val intent = Intent(this, FormsDetailActivity::class.java).apply {
             putExtra("SUBMISSION_DATA", submission)
             putExtra("FORM_MODEL", formModel)
         }

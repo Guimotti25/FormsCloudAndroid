@@ -1,6 +1,7 @@
 package br.com.mottech.formscloud.ui
 
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -9,138 +10,165 @@ import android.text.InputType
 import android.text.SpannableStringBuilder
 import android.text.style.ForegroundColorSpan
 import android.view.View
-import android.widget.ArrayAdapter
-import android.widget.AutoCompleteTextView
-import android.widget.Button
-import android.widget.CheckBox
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.RadioButton
-import android.widget.RadioGroup
-import android.widget.TextView
+import android.view.ViewGroup
+import android.webkit.WebView
+import android.widget.*
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
 import androidx.core.widget.doOnTextChanged
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.ViewModelProvider
 import br.com.mottech.formscloud.data.AppDatabase
-import br.com.mottech.formscloud.data.FormSubmission
+import br.com.mottech.formscloud.data.NewFormsViewModelFactory
 import br.com.mottech.formscloud.databinding.ActivityNewFormsBinding
 import br.com.mottech.formscloud.helper.PrimaryButton
 import br.com.mottech.formscloud.model.Field
-import br.com.mottech.formscloud.model.FormModel
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputLayout
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 class NewFormsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityNewFormsBinding
-    private lateinit var formModel: FormModel
-    private lateinit var database: AppDatabase
-    private val fieldValues = mutableMapOf<String, String>()
-    private var saveButton: PrimaryButton? = null
+    private lateinit var viewModel: NewFormsViewModel
     private lateinit var filePickerLauncher: ActivityResultLauncher<Intent>
     private var currentFileTextView: TextView? = null
     private var currentFileFieldName: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        try
-        {
-            binding = ActivityNewFormsBinding.inflate(layoutInflater)
-            setContentView(binding.root)
+        binding = ActivityNewFormsBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-            filePickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-                if (result.resultCode == RESULT_OK) {
-                    result.data?.data?.let { uri ->
+        val database = AppDatabase.getDatabase(this)
+        val factory = NewFormsViewModelFactory(database)
+        viewModel = ViewModelProvider(this, factory)[NewFormsViewModel::class.java]
 
-                        val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        try {
-                            contentResolver.takePersistableUriPermission(uri, takeFlags)
-                        } catch (e: SecurityException) {
-                            e.printStackTrace()
-                        }
+        val form = getFormFromIntent() ?: return
+        viewModel.setFormModel(form)
+        title = "New - ${form.title}"
 
-                        currentFileFieldName?.let { fieldName ->
-                            val fileName = getFileName(uri)
-                            currentFileTextView?.text = fileName
-                            fieldValues[fieldName] = uri.toString()
-                            validateForm()
-
-                            currentFileFieldName = null
-                            currentFileTextView = null
-                        }
+        filePickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                result.data?.data?.let { uri ->
+                    try {
+                        contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    } catch (e: SecurityException) {
+                        e.printStackTrace()
+                    }
+                    currentFileFieldName?.let { fieldName ->
+                        val fileName = getFileName(uri)
+                        currentFileTextView?.text = fileName
+                        viewModel.updateFieldValue(fieldName, uri.toString())
+                        currentFileFieldName = null
+                        currentFileTextView = null
                     }
                 }
             }
+        }
 
-            getFormFromIntent()
-            database = AppDatabase.getDatabase(this)
-            generateForm()
-            validateForm()
-        }
-        catch (e: Exception)
-        {
-           e.printStackTrace()
-        }
+        observeViewModel()
+        generateForm()
     }
 
-    private fun getFormFromIntent() {
+    private fun getFormFromIntent(): br.com.mottech.formscloud.model.FormModel? {
         val form = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra("FORM_TO_FILL", FormModel::class.java)
+            intent.getParcelableExtra("FORM_TO_FILL", br.com.mottech.formscloud.model.FormModel::class.java)
         } else {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra("FORM_TO_FILL")
         }
         if (form == null) {
-            finish(); return
+            finish()
+            return null
         }
-        formModel = form
-        title = "New - ${formModel.title}"
+        return form
+    }
+
+    private fun observeViewModel() {
+        viewModel.isFormValid.observe(this) { isValid ->
+            val saveButton = binding.formContainer.findViewWithTag<PrimaryButton>("save_button")
+            if (isValid) {
+                saveButton?.setEnabledStyle()
+            } else {
+                saveButton?.setDisabledStyle()
+            }
+        }
     }
 
     private fun generateForm() {
         val container = binding.formContainer
+        container.removeAllViews()
 
-        formModel.fields.forEach { field ->
+        val formModel = viewModel.formModel.value ?: return
 
-            val isSingleCheckbox = field.type == "checkbox" && field.options.isNullOrEmpty()
+        val sections = formModel.sections?.sortedBy { it.index }
 
-            if (field.type != "description" && !isSingleCheckbox) {
-                val label = createLabel(field)
-                container.addView(label)
+        if (!sections.isNullOrEmpty()) {
+            sections.forEach { section ->
+                addHtmlSectionUsingWebView(section.title, container)
+                if (section.from >= 0 && section.to < formModel.fields.size) {
+                    val sectionFields = formModel.fields.subList(section.from, section.to + 1)
+                    sectionFields.forEach { field ->
+                        val isSingleCheckbox = field.type == "checkbox" && field.options.isNullOrEmpty()
+                        if (field.type != "description" && !isSingleCheckbox) {
+                            container.addView(createLabel(field))
+                        }
+                        container.addView(createInputView(field))
+                    }
+                }
             }
-
-            val inputView = createInputView(field)
-            container.addView(inputView)
+        } else {
+            formModel.fields.forEach { field ->
+                val isSingleCheckbox = field.type == "checkbox" && field.options.isNullOrEmpty()
+                if (field.type != "description" && !isSingleCheckbox) {
+                    container.addView(createLabel(field))
+                }
+                container.addView(createInputView(field))
+            }
         }
 
         val button = PrimaryButton(this).apply {
             text = "Save"
+            tag = "save_button"
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = 48 }
-
+            ).apply { topMargin = dpToPx(48) }
             setOnClickListener {
-                lifecycleScope.launch {
-                    val submission = FormSubmission(
-                        parentFormId = formModel.title,
-                        fieldValues = fieldValues
-                    )
-                    database.formSubmissionDao().insert(submission)
+                viewModel.saveSubmission {
                     finish()
                 }
             }
         }
-        this.saveButton = button
         container.addView(button)
+    }
+
+    private fun addHtmlSectionUsingWebView(html: String, container: ViewGroup) {
+        val webView = WebView(this)
+        val lp = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            bottomMargin = dpToPx(12)
+        }
+        webView.layoutParams = lp
+        webView.settings.javaScriptEnabled = false
+        webView.settings.domStorageEnabled = true
+        webView.settings.loadsImagesAutomatically = true
+        webView.isVerticalScrollBarEnabled = false
+        webView.setBackgroundColor(Color.TRANSPARENT)
+        webView.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
+        container.addView(webView)
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        val density = resources.displayMetrics.density
+        return (dp * density + 0.5f).toInt()
     }
 
     private fun createLabel(field: Field): TextView {
@@ -149,7 +177,6 @@ class NewFormsActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = if (field.type != "checkbox") 32 else 16 }
-
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium)
         }
 
@@ -170,16 +197,20 @@ class NewFormsActivity : AppCompatActivity() {
 
     private fun createInputView(field: Field): View {
         when (field.type) {
-            "text", "email", "number" -> {
+            "text", "email", "number", "textarea" -> {
                 val layout = TextInputLayout(this)
                 val editText = com.google.android.material.textfield.TextInputEditText(this).apply {
                     when (field.type) {
                         "email" -> inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
                         "number" -> inputType = InputType.TYPE_CLASS_NUMBER
+                        "textarea" -> {
+                            minLines = 3
+                            isSingleLine = false
+                            gravity = android.view.Gravity.TOP
+                        }
                     }
                     doOnTextChanged { text, _, _, _ ->
-                        fieldValues[field.name] = text.toString()
-                        validateForm()
+                        viewModel.updateFieldValue(field.name, text.toString())
                     }
                 }
                 layout.addView(editText)
@@ -191,10 +222,8 @@ class NewFormsActivity : AppCompatActivity() {
                 }
                 val editText = com.google.android.material.textfield.TextInputEditText(this).apply {
                     inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-
                     doOnTextChanged { text, _, _, _ ->
-                        fieldValues[field.name] = text.toString()
-                        validateForm()
+                        viewModel.updateFieldValue(field.name, text.toString())
                     }
                 }
                 layout.addView(editText)
@@ -203,7 +232,7 @@ class NewFormsActivity : AppCompatActivity() {
             "description" -> {
                 return TextView(this).apply {
                     text = HtmlCompat.fromHtml(field.label, HtmlCompat.FROM_HTML_MODE_LEGACY)
-                   setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium)
+                    setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium)
                 }
             }
             "file" -> {
@@ -221,7 +250,6 @@ class NewFormsActivity : AppCompatActivity() {
                             addCategory(Intent.CATEGORY_OPENABLE)
                             type = "image/*"
                         }
-
                         filePickerLauncher.launch(intent)
                     }
                 }
@@ -247,8 +275,7 @@ class NewFormsActivity : AppCompatActivity() {
                     setOnCheckedChangeListener { group, checkedId ->
                         val checkedRadioButton = group.findViewById<RadioButton>(checkedId)
                         val selectedOption = field.options?.find { it.label == checkedRadioButton.text }
-                        fieldValues[field.name] = selectedOption?.value ?: ""
-                        validateForm()
+                        viewModel.updateFieldValue(field.name, selectedOption?.value ?: "")
                     }
                 }
             }
@@ -257,8 +284,7 @@ class NewFormsActivity : AppCompatActivity() {
                     SwitchMaterial(this).apply {
                         text = field.label
                         setOnCheckedChangeListener { _, isChecked ->
-                            fieldValues[field.name] = isChecked.toString()
-                            validateForm()
+                            viewModel.updateFieldValue(field.name, isChecked.toString())
                         }
                     }
                 } else {
@@ -272,27 +298,22 @@ class NewFormsActivity : AppCompatActivity() {
                                         .filter { it.isChecked }
                                         .mapNotNull { checkbox -> field.options.find { it.label == checkbox.text }?.value }
                                         .joinToString(",")
-                                    fieldValues[field.name] = selected
-                                    validateForm()
+                                    viewModel.updateFieldValue(field.name, selected)
                                 }
                             })
                         }
                     }
                 }
             }
-            "dropdown",  "textarea" -> {
+            "dropdown" -> {
                 val layout = TextInputLayout(this, null, com.google.android.material.R.style.Widget_MaterialComponents_TextInputLayout_OutlinedBox_ExposedDropdownMenu)
                 val autoComplete = AutoCompleteTextView(this).apply {
                     inputType = InputType.TYPE_NULL
-
                     val options = field.options?.map { it.label } ?: emptyList()
                     setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, options))
-
                     setOnItemClickListener { _, _, position, _ ->
-                        fieldValues[field.name] = field.options?.get(position)?.value ?: ""
-                        validateForm()
+                        viewModel.updateFieldValue(field.name, field.options?.get(position)?.value ?: "")
                     }
-
                     setOnClickListener {
                         showDropDown()
                     }
@@ -300,7 +321,7 @@ class NewFormsActivity : AppCompatActivity() {
                 layout.addView(autoComplete)
                 return layout
             }
-            else -> return TextView(this).apply { text = "Not suported: ${field.type}" }
+            else -> return TextView(this).apply { text = "Not supported: ${field.type}" }
         }
     }
 
@@ -310,24 +331,9 @@ class NewFormsActivity : AppCompatActivity() {
             val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
             val dateString = sdf.format(Date(selection))
             editText.setText(dateString)
-            fieldValues[fieldName] = dateString
-            validateForm()
+            viewModel.updateFieldValue(fieldName, dateString)
         }
         picker.show(supportFragmentManager, "DATE_PICKER")
-    }
-
-    private fun validateForm() {
-        val allRequiredFilled = formModel.fields
-            .filter { it.required == true }
-            .all { field ->
-                val value = fieldValues[field.name]
-                !value.isNullOrEmpty() && value != "false"
-            }
-        if (allRequiredFilled) {
-            saveButton?.setEnabledStyle()
-        } else {
-            saveButton?.setDisabledStyle()
-        }
     }
 
     private fun getFileName(uri: Uri): String {
@@ -344,5 +350,4 @@ class NewFormsActivity : AppCompatActivity() {
         }
         return fileName ?: uri.lastPathSegment ?: "File"
     }
-
 }

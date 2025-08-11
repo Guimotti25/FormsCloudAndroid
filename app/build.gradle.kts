@@ -76,4 +76,7 @@ dependencies {
 
     // Glide para carregamento de imagens
     implementation("com.github.bumptech.glide:glide:4.16.0")
+
+    // Para analisar (parse) strings HTML
+    implementation("org.jsoup:jsoup:1.17.2")
 }

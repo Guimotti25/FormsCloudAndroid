@@ -9,7 +9,7 @@ import br.com.mottech.formscloud.data.FormSubmission
 import br.com.mottech.formscloud.databinding.ActivitySubmissionDetailBinding
 import br.com.mottech.formscloud.model.FormModel
 
-class SubmissionDetailActivity : AppCompatActivity() {
+class FormsDetailActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySubmissionDetailBinding
 

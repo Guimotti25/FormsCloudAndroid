@@ -1,6 +1,4 @@
-// No novo arquivo: PrimaryButton.kt
-
-package br.com.mottech.formscloud.helper // Use o seu nome de pacote
+package br.com.mottech.formscloud.helper
 
 import android.content.Context
 import android.util.AttributeSet

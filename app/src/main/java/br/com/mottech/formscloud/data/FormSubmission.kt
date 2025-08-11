@@ -1,7 +1,6 @@
-package br.com.mottech.formscloud.data // Use o seu nome de pacote
+package br.com.mottech.formscloud.data
 
-
-import android.os.Parcelable // <-- IMPORT NECESSÁRIO
+import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
@@ -10,7 +9,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.parcelize.Parcelize
 
-@Parcelize // <-- 1. ADICIONE ESTA ANOTAÇÃO
+@Parcelize
 @Entity(tableName = "form_submissions")
 @TypeConverters(MapTypeConverter::class)
 data class FormSubmission(
@@ -19,9 +18,8 @@ data class FormSubmission(
     val parentFormId: String,
     val fieldValues: Map<String, String>,
     val createdAt: Long = System.currentTimeMillis()
-) : Parcelable // <-- 2. ADICIONE A IMPLEMENTAÇÃO DA INTERFACE
+) : Parcelable
 
-// A classe MapTypeConverter continua a mesma, sem alterações.
 class MapTypeConverter {
     @TypeConverter
     fun fromString(value: String): Map<String, String> {

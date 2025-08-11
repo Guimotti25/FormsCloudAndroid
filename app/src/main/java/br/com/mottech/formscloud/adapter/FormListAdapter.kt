@@ -1,4 +1,4 @@
-package br.com.mottech.formscloud.adapter // Use o seu nome de pacote
+package br.com.mottech.formscloud.adapter
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
