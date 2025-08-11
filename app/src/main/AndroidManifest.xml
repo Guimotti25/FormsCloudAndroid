@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
+        android:name=".helper.MainApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -12,7 +12,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FormsCloud">
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.NewFormsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.EntryListActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.SubmissionDetailActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -21,5 +30,4 @@
             </intent-filter>
         </activity>
     </application>
-
 </manifest>

@@ -1,6 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("kotlin-kapt")
+    id("dagger.hilt.android.plugin")
+    id("kotlin-parcelize")
 }
 
 android {
@@ -26,6 +29,11 @@ android {
             )
         }
     }
+
+    buildFeatures {
+        viewBinding = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -45,4 +53,27 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // Room
+    implementation("androidx.room:room-runtime:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+
+    // Lifecycle
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
+
+    // Hilt
+    implementation("com.google.dagger:hilt-android:2.48")
+    kapt("com.google.dagger:hilt-compiler:2.48")
+
+    // Hilt for ViewModel
+    implementation("androidx.hilt:hilt-navigation-fragment:1.1.0")
+    kapt("androidx.hilt:hilt-compiler:1.1.0")
+
+    //Gson
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    // Glide para carregamento de imagens
+    implementation("com.github.bumptech.glide:glide:4.16.0")
 }
