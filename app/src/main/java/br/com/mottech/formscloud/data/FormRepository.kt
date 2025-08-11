@@ -1,15 +1,18 @@
 package br.com.mottech.formscloud.data
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import br.com.mottech.formscloud.ui.NewFormsViewModel
+import androidx.lifecycle.LiveData
 
-class NewFormsViewModelFactory(private val database: AppDatabase) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(NewFormsViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return NewFormsViewModel(database) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
+class FormRepository(private val formSubmissionDao: FormSubmissionDao) {
+
+    suspend fun insertSubmission(submission: FormSubmission) {
+        formSubmissionDao.insert(submission)
+    }
+
+    suspend fun deleteSubmission(submission: FormSubmission) {
+        formSubmissionDao.delete(submission)
+    }
+
+    fun getSubmissionsForForm(formId: String): LiveData<List<FormSubmission>> {
+        return formSubmissionDao.getSubmissionsForForm(formId)
     }
 }

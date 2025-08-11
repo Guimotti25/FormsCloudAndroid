@@ -2,7 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("kotlin-kapt")
-    id("dagger.hilt.android.plugin")
     id("kotlin-parcelize")
 }
 
@@ -63,20 +62,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
 
-    // Hilt
-    implementation("com.google.dagger:hilt-android:2.48")
-    kapt("com.google.dagger:hilt-compiler:2.48")
-
-    // Hilt for ViewModel
-    implementation("androidx.hilt:hilt-navigation-fragment:1.1.0")
-    kapt("androidx.hilt:hilt-compiler:1.1.0")
-
     //Gson
     implementation("com.google.code.gson:gson:2.10.1")
 
-    // Glide para carregamento de imagens
+    // Glide
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
-    // Para analisar (parse) strings HTML
-    implementation("org.jsoup:jsoup:1.17.2")
 }
