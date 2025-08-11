@@ -1,8 +1,12 @@
-package br.com.mottech.formscloud // Use o seu nome de pacote
+package br.com.mottech.formscloud
 
+import android.content.ContentValues.TAG
+import android.health.connect.datatypes.units.Length
 import android.net.Uri
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import br.com.mottech.formscloud.databinding.CardFormDetailsBinding
 import br.com.mottech.formscloud.databinding.CardImageDetailBinding
@@ -46,11 +50,13 @@ class SubmissionDetailAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val field = displayableFields[position]
-        val answer = answers[field.name] ?: "Blank"
+        val savedValue = answers[field.name] ?: "Blank"
+
+        val displayText = field.options?.find { it.value == savedValue }?.label ?: savedValue
 
         when (holder) {
-            is ImageDetailViewHolder -> holder.bind(field, answer)
-            is TextDetailViewHolder -> holder.bind(field, answer)
+            is ImageDetailViewHolder -> holder.bind(field, savedValue)
+            is TextDetailViewHolder -> holder.bind(field, displayText)
         }
     }
 
@@ -67,10 +73,16 @@ class SubmissionDetailAdapter(
         fun bind(field: Field, answerUriString: String) {
             binding.textViewQuestionLabel.text = field.label
 
-            Glide.with(itemView.context)
-                .load(Uri.parse(answerUriString))
-                .placeholder(android.R.drawable.ic_menu_gallery)
-                .into(binding.imageViewAnswer)
+            if (answerUriString.isNotEmpty() && answerUriString != "Blank") {
+                Glide.with(itemView.context)
+                    .load(Uri.parse(answerUriString))
+                    .placeholder(android.R.drawable.ic_menu_gallery)
+                    .error(android.R.drawable.ic_menu_close_clear_cancel)
+                    .into(binding.imageViewAnswer)
+            }
+            else{
+                Log.e(TAG, "ERRO: URI da imagem está vazia ou não foi encontrada.")
+            }
         }
     }
 }

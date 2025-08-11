@@ -81,10 +81,10 @@ class EntryListActivity : AppCompatActivity(), OnItemInteractionListener {
     private fun updateUi(submissions: List<FormSubmission>) {
         if (submissions.isEmpty()) {
             binding.recyclerMyForms.visibility = View.GONE
-         //   binding.textViewEmptyState.visibility = View.VISIBLE
+            binding.linearNoForms.visibility = View.VISIBLE
         } else {
             binding.recyclerMyForms.visibility = View.VISIBLE
-         //   binding.textViewEmptyState.visibility = View.GONE
+            binding.linearNoForms.visibility = View.GONE
             submissionAdapter.updateData(submissions)
         }
     }

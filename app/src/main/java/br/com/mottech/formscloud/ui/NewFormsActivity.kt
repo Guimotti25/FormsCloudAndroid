@@ -109,8 +109,13 @@ class NewFormsActivity : AppCompatActivity() {
         val container = binding.formContainer
 
         formModel.fields.forEach { field ->
-            val label = createLabel(field)
-            container.addView(label)
+
+            val isSingleCheckbox = field.type == "checkbox" && field.options.isNullOrEmpty()
+
+            if (field.type != "description" && !isSingleCheckbox) {
+                val label = createLabel(field)
+                container.addView(label)
+            }
 
             val inputView = createInputView(field)
             container.addView(inputView)
@@ -165,15 +170,28 @@ class NewFormsActivity : AppCompatActivity() {
 
     private fun createInputView(field: Field): View {
         when (field.type) {
-            "text", "email", "number", "password" -> {
+            "text", "email", "number" -> {
                 val layout = TextInputLayout(this)
                 val editText = com.google.android.material.textfield.TextInputEditText(this).apply {
                     when (field.type) {
                         "email" -> inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
                         "number" -> inputType = InputType.TYPE_CLASS_NUMBER
-                        "password" -> inputType = InputType.TYPE_TEXT_VARIATION_PASSWORD
-                        "textarea" -> { minLines = 3; isSingleLine = false }
                     }
+                    doOnTextChanged { text, _, _, _ ->
+                        fieldValues[field.name] = text.toString()
+                        validateForm()
+                    }
+                }
+                layout.addView(editText)
+                return layout
+            }
+            "password" -> {
+                val layout = TextInputLayout(this).apply {
+                    endIconMode = TextInputLayout.END_ICON_PASSWORD_TOGGLE
+                }
+                val editText = com.google.android.material.textfield.TextInputEditText(this).apply {
+                    inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+
                     doOnTextChanged { text, _, _, _ ->
                         fieldValues[field.name] = text.toString()
                         validateForm()
@@ -199,7 +217,11 @@ class NewFormsActivity : AppCompatActivity() {
                     setOnClickListener {
                         currentFileFieldName = field.name
                         currentFileTextView = fileTextView
-                        val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*" }
+                        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                            type = "image/*"
+                        }
+
                         filePickerLauncher.launch(intent)
                     }
                 }
@@ -259,13 +281,20 @@ class NewFormsActivity : AppCompatActivity() {
                 }
             }
             "dropdown",  "textarea" -> {
-                val layout = TextInputLayout(this, null, com.google.android.material.R.style.Widget_Material3_TextInputLayout_FilledBox_ExposedDropdownMenu)
+                val layout = TextInputLayout(this, null, com.google.android.material.R.style.Widget_MaterialComponents_TextInputLayout_OutlinedBox_ExposedDropdownMenu)
                 val autoComplete = AutoCompleteTextView(this).apply {
+                    inputType = InputType.TYPE_NULL
+
                     val options = field.options?.map { it.label } ?: emptyList()
                     setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, options))
+
                     setOnItemClickListener { _, _, position, _ ->
-                        fieldValues[field.name] = field.options?.get(position)?.value ?: "" // MUDANÇA: de uuid para name
+                        fieldValues[field.name] = field.options?.get(position)?.value ?: ""
                         validateForm()
+                    }
+
+                    setOnClickListener {
+                        showDropDown()
                     }
                 }
                 layout.addView(autoComplete)
