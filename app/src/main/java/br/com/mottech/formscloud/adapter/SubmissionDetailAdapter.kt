@@ -81,7 +81,7 @@ class SubmissionDetailAdapter(
                     .into(binding.imageViewAnswer)
             }
             else{
-                Log.e(TAG, "ERRO: URI da imagem está vazia ou não foi encontrada.")
+                Log.e(TAG, "ERRO: Empty image")
             }
         }
     }

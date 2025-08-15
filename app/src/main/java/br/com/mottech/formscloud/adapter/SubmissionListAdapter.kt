@@ -34,13 +34,13 @@ class SubmissionListAdapter(
                                : RecyclerView.ViewHolder(binding.root) {
         fun bind(submission: FormSubmission) {
             val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-            binding.textViewDate.text = "Enviado em: ${sdf.format(Date(submission.createdAt))}"
+            binding.textViewDate.text = "Sented em: ${sdf.format(Date(submission.createdAt))}"
 
             val firstName = submission.fieldValues["first_name"] ?: "N/A"
             val lastName = submission.fieldValues["last_name"] ?: ""
             binding.textViewPrimaryInfo.text = "$firstName $lastName"
 
-            val email = submission.fieldValues["email"] ?: "Email não fornecido"
+            val email = submission.fieldValues["email"] ?: "Email blanked"
             binding.textViewSecondaryInfo.text = email
 
             binding.root.setOnClickListener {
